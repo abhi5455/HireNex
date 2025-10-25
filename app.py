@@ -39,7 +39,7 @@ except:
     spreadsheet = gc.create(SHEET_NAME)
     sheet = spreadsheet.sheet1
     # Share with your email
-    spreadsheet.share('abhiramashok1062004@gmail.com', perm_type='user', role='writer')
+    spreadsheet.share(os.getenv('DEV_EMAIL'), perm_type='user', role='writer')
 
 # Initialize sheet headers if empty
 if not sheet.get_all_values():
@@ -73,7 +73,7 @@ def download_twilio_file(file_url):
 def extract_text_from_pdf(file_url):
     """Extract text from PDF file using multiple methods"""
     try:
-        print("📥 Downloading PDF...")
+        print("Downloading PDF...")
         response = requests.get(file_url, timeout=30)
         file_data = download_twilio_file(file_url)
 
@@ -90,13 +90,13 @@ def extract_text_from_pdf(file_url):
                         print(f"   ✓ Page {page_num}: {len(page_text)} chars")
 
             if len(text.strip()) > 50:
-                print(f"✅ pdfplumber success! Extracted {len(text)} characters")
+                print(f"\033[92mpdfplumber success! Extracted {len(text)} characters\033[0m\n")
                 return text
             else:
-                print("⚠️ pdfplumber extracted too little text, trying alternative...")
+                print("\033[93m⚠️ pdfplumber extracted too little text, trying alternative...\033[0m\n")
 
         except Exception as e:
-            print(f"⚠️ pdfplumber failed: {str(e)}, trying pypdf...")
+            print(f"\033[91mpdfplumber failed: {str(e)}, trying pypdf...\033[0m\n")
 
         # Method 2: Fallback to pypdf
         try:
@@ -111,17 +111,17 @@ def extract_text_from_pdf(file_url):
                     print(f"   ✓ Page {page_num}: {len(page_text)} chars")
 
             if len(text.strip()) > 50:
-                print(f"✅ pypdf success! Extracted {len(text)} characters")
+                print(f"\033[92mpypdf success! Extracted {len(text)} characters\033[0m\n")
                 return text
             else:
                 return "ERROR: PDF appears to be empty or scanned image. Please send a text-based PDF."
 
         except Exception as e:
-            print(f"❌ pypdf failed: {str(e)}")
+            print(f"\033[91mpypdf failed: {str(e)}\033[0m")
             return f"ERROR: Could not read PDF - {str(e)}"
 
     except Exception as e:
-        print(f"❌ Download failed: {str(e)}")
+        print(f"\033[91mDownload failed: {str(e)}\033[0m")
         return f"ERROR: Could not download PDF - {str(e)}"
 
 
@@ -230,7 +230,7 @@ def whatsapp_webhook():
     resp = MessagingResponse()
     msg = resp.message()
 
-    print(f"📱 Received message from {from_number}")
+    print(f"\n\033[96mReceived message from {from_number}\033[0m")
 
     try:
         resume_text = ""
@@ -243,7 +243,7 @@ def whatsapp_webhook():
             file_type = media_type
 
             print(f"📎 Processing file: {media_type}")
-            print(f"📎 File URL: {media_url}")
+            print(f"📎 File URL: {media_url}\n")
 
             msg.body("✅ Resume received! Processing your document...")
 
@@ -279,14 +279,14 @@ def whatsapp_webhook():
 
             msg.body("✅ Text received! Extracting your details...")
 
-        print(f"📄 Extracted text length: {len(resume_text)} characters")
-        print(f"📄 First 200 chars: {resume_text[:200]}...")
+        print(f"Extracted text length: {len(resume_text)} characters")
+        print(f"\033[93mFirst 200 chars:\033[0m \n{resume_text[:200]}...\n")
 
         # Parse resume using Gemini
-        print("🤖 Sending to Gemini for parsing...")
+        print("🤖 \033[96mSending to Gemini for parsing...\033[0m")
         parsed_data = parse_resume_with_gemini(resume_text)
 
-        print(f"✨ Parsed data: {parsed_data}")
+        print(f"\nParsed data: {parsed_data}\n")
 
         # Check if parsing was successful
         if parsed_data.get('name') in ['Parsing error', 'Error', 'Not found']:
@@ -309,25 +309,32 @@ def whatsapp_webhook():
         ]
 
         sheet.append_row(row_data)
-        print("✅ Data saved to Google Sheets")
+        print("\033[92mData saved to Google Sheets\033[0m")
 
         # Send confirmation message
         confirmation = f"""
-✅ *Resume Processed Successfully!*
+*Resume Processed Successfully*
 
-📋 *Extracted Details:*
-👤 Name: {parsed_data.get('name', 'Not found')}
-📧 Email: {parsed_data.get('email', 'Not found')}
-📞 Phone: {parsed_data.get('phone', 'Not found')}
-💼 Experience: {parsed_data.get('experience', '0')} years
-🎓 Education: {parsed_data.get('education', 'Not found')}
+Here’s a summary of the extracted details:
 
-Your application has been recorded. Our team will review and contact you soon!
+----------------------------------------
+*Name:* {parsed_data.get('name', 'Not found')}
+*Email:* {parsed_data.get('email', 'Not found')}
+*Phone:* {parsed_data.get('phone', 'Not found')}
+*Experience:* {parsed_data.get('experience', '0')} years
+*Education:* {parsed_data.get('education', 'Not found')}
+----------------------------------------
+
+Your application has been successfully recorded in our system.
+Our recruitment team will review your profile and contact you if shortlisted.
+
+Thank you for applying.
 """
+
         msg.body(confirmation)
 
     except Exception as e:
-        error_msg = f"❌ Error processing resume: {str(e)}"
+        error_msg = f"\033[91mError processing resume: {str(e)}\033[0m"
         print(error_msg)
         print(f"Full error details: {repr(e)}")
         import traceback
@@ -351,7 +358,7 @@ def health_check():
 def home():
     """Home page with instructions"""
     return """
-    <h1>📱 WhatsApp Resume Parser</h1>
+    <h1>WhatsApp Resume Parser</h1>
     <p>✅ Server is running!</p>
     <h3>How to test:</h3>
     <ol>
@@ -364,7 +371,7 @@ def home():
 
 
 if __name__ == '__main__':
-    print("🚀 Starting WhatsApp Resume Parser...")
-    print(f"📊 Google Sheet: {SHEET_NAME}")
+    print("\n\033[96mStarting WhatsApp Resume Parser...\033[0m")
+    print(f"\033[93mGoogle Sheet:\033[0m {SHEET_NAME}")
     print(f"🔗 Webhook URL: http://localhost:5000/webhook")
     app.run(debug=True, port=5000)
