@@ -1,37 +1,63 @@
-# WhatsApp Resume Parser - Technical Implementation
+# WhatsApp Resume Parser — Technical Implementation
 
-## Overview
+An automated resume processing system that receives resumes via **WhatsApp**, extracts key candidate information using **AI (Google Gemini)**, and stores structured data in **Google Sheets** — all in real time.
 
-An automated resume processing system that receives resumes via WhatsApp, extracts candidate information using AI, and organizes the data in Google Sheets. The entire workflow happens in real-time with no manual intervention required.
+---
 
-## Approach
+## 🚀 Overview
 
-The system works as a webhook-based pipeline. When a candidate sends their resume to a designated WhatsApp number, Twilio forwards the message to my Flask application. The app downloads any attached files, extracts text content, sends it to Google's Gemini AI for parsing, and finally writes the structured data to a Google Sheet.
+The system automates resume collection and parsing through WhatsApp.  
+When a candidate sends their resume, it is automatically downloaded, processed, and logged into Google Sheets.  
+A confirmation message is sent back to the candidate summarizing the extracted details.
 
-I chose this architecture because webhooks provide instant notifications without constant polling, and cloud APIs handle the heavy lifting of file processing and natural language understanding.
+---
 
-## Technical Stack
+## ⚙️ Architecture & Workflow
 
-**Messaging Layer:** Twilio WhatsApp Sandbox handles message reception and delivery. Their sandbox is free for testing and provides immediate webhook notifications when messages arrive.
+**1. Message Handling**  
+- WhatsApp messages are received through **Twilio WhatsApp Sandbox**.  
+- Each message (with or without attachments) triggers a **Flask webhook**.
 
-**Backend:** Python Flask serves as the webhook endpoint. It's lightweight enough for a demo but production-ready if needed. The app runs locally during development with ngrok tunneling traffic from the internet.
+**2. Backend Processing**  
+- Flask handles incoming requests.  
+- Files are downloaded via Twilio’s media URL.  
+- Text is extracted using:
+  - `pdfplumber` for PDF resumes  
+  - `python-docx` for Word documents
 
-**Document Processing:** I used two libraries for text extraction - `pdfplumber` for complex PDFs and `python-docx` for Word documents. The system tries multiple extraction methods before giving up, which improves success rates with varied file formats.
+**3. Data Parsing (AI)**  
+- Extracted text is passed to **Google Gemini API**, which structures the data into JSON.  
+- Parsed fields include: Name, Email, Phone, Education, Experience, and Skills.
 
-**AI Parsing:** Google Gemini (gemini-pro model) handles the actual data extraction. I send the resume text with a structured prompt asking for specific fields like name, email, phone number, skills, experience, and education. Gemini returns JSON which I validate before storage.
+**4. Storage**  
+- Parsed JSON data is written to a **Google Sheet** using the **Google Sheets API**.  
+- Each row includes a timestamp and sender’s WhatsApp number.
 
-**Data Storage:** Google Sheets API stores the parsed data. I created a service account for authentication, which lets the application write to sheets without OAuth flows. Each resume becomes one row with timestamp, extracted fields, and the sender's WhatsApp number.
+**5. Feedback Loop**  
+- A confirmation message is sent back to the sender summarizing extracted details (without emojis).  
 
-## What It Does
+---
 
-The system successfully processes resumes sent as PDF, DOCX, or plain text through WhatsApp. Within seconds of receiving a resume, it extracts key candidate details and responds with a confirmation message showing what was captured. Recruiters can then view all submissions in a single organized spreadsheet.
+## 🧩 Tech Stack
 
-The demo handles multiple simultaneous submissions, provides helpful error messages when files are unreadable, and maintains conversation history in the sheet for follow-up.
+| Component | Technology |
+|------------|-------------|
+| Messaging | Twilio WhatsApp Sandbox |
+| Backend | Flask (Python) |
+| AI Model | Google Gemini |
+| Storage | Google Sheets API |
+| File Parsing | pdfplumber, python-docx |
+| Deployment | Localhost (ngrok for webhook exposure) |
 
-[//]: # (## Limitations & Future Work)
+---
 
-[//]: # ()
-[//]: # (Current limitations include inability to process scanned PDFs &#40;would need OCR integration&#41; and dependence on ngrok for local development. For production use, I would deploy to a cloud platform, add OCR support via Google Cloud Vision, implement better error recovery, and create a simple dashboard for recruiters to manage applications.)
+## 🔧 Configuration
 
-[//]: # ()
-[//]: # (The entire system runs on free tiers during testing - Gemini provides 60 requests per minute free, Google Sheets has generous limits, and Twilio's sandbox costs nothing for development.)
+Create a `.env` file in the project root directory and define the following environment variables:
+
+```bash
+GEMINI_API_KEY
+GOOGLE_SHEET_NAME
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+DEV_EMAIL
