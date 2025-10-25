@@ -1,6 +1,6 @@
 # HireNex: WhatsApp Resume Parser
 
-An automated resume processing system that receives resumes via **WhatsApp**, extracts key candidate information using **AI (Google Gemini)**, and stores structured data in **Google Sheets** — all in real time.
+An automated resume processing system that receives resumes via **WhatsApp**, extracts key candidate information using **AI**, and stores structured data in **Google Sheets** — all in real time.
 
 ---
 
