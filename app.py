@@ -38,7 +38,6 @@ try:
 except:
     spreadsheet = gc.create(SHEET_NAME)
     sheet = spreadsheet.sheet1
-    # Share with your email
     spreadsheet.share(os.getenv('DEV_EMAIL'), perm_type='user', role='writer')
 
 # Initialize sheet headers if empty
@@ -54,7 +53,6 @@ if not sheet.get_all_values():
         'WhatsApp Number',
         'Status'
     ])
-    # Format header row
     sheet.format('A1:I1', {'textFormat': {'bold': True}})
 
 
@@ -79,7 +77,7 @@ def extract_text_from_pdf(file_url):
 
         text = ""
 
-        # Method 1: Try pdfplumber first (better for complex PDFs)
+        # pdfplumber
         try:
             print("🔧 Trying pdfplumber...")
             with pdfplumber.open(file_data) as pdf:
@@ -98,7 +96,7 @@ def extract_text_from_pdf(file_url):
         except Exception as e:
             print(f"\033[91mpdfplumber failed: {str(e)}, trying pypdf...\033[0m\n")
 
-        # Method 2: Fallback to pypdf
+        # Fallback to pypdf
         try:
             file_data.seek(0)  # Reset file pointer
             print("🔧 Trying pypdf...")
@@ -254,7 +252,6 @@ def whatsapp_webhook():
                 error_msg = resume_text.replace("ERROR: ", "")
                 msg.body(f"\n\n❌ {error_msg}")
 
-                # Add helpful tip
                 if "scanned image" in error_msg.lower():
                     msg.body(
                         "\n\n💡 Tip: Your PDF is a scanned image. Please:\n• Use a text-based PDF\n• Or copy-paste your resume as text")
