@@ -34,7 +34,7 @@ A confirmation message is sent back to the candidate summarizing the extracted d
 - Each row includes a timestamp and sender’s WhatsApp number.
 
 **5. Feedback Loop**  
-- A confirmation message is sent back to the sender summarizing extracted details (without emojis).  
+- A confirmation message is sent back to the sender summarizing extracted details.  
 
 ---
 
