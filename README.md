@@ -2,7 +2,7 @@
 
 ## Overview
 
-I built an automated resume processing system that receives resumes via WhatsApp, extracts candidate information using AI, and organizes the data in Google Sheets. The entire workflow happens in real-time with no manual intervention required.
+An automated resume processing system that receives resumes via WhatsApp, extracts candidate information using AI, and organizes the data in Google Sheets. The entire workflow happens in real-time with no manual intervention required.
 
 ## Approach
 
