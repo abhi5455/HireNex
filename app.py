@@ -6,7 +6,8 @@ from google.oauth2.service_account import Credentials
 import os
 import requests
 from io import BytesIO
-import PyPDF2
+import pdfplumber
+from pypdf import PdfReader
 import docx
 import json
 from datetime import datetime
@@ -17,16 +18,19 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Gemini Configuration
+# Gemini config
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Google Sheets Setup
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
 creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
 gc = gspread.authorize(creds)
 
-# Open or create Google Sheet
+# open or create Google Sheet
 SHEET_NAME = os.getenv('GOOGLE_SHEET_NAME', 'Resume Database')
 try:
     spreadsheet = gc.open(SHEET_NAME)
@@ -54,18 +58,71 @@ if not sheet.get_all_values():
     sheet.format('A1:I1', {'textFormat': {'bold': True}})
 
 
+def download_twilio_file(file_url):
+    """Download media from Twilio with authentication"""
+    response = requests.get(
+        file_url,
+        auth=(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN')),
+        timeout=30
+    )
+    if response.status_code != 200:
+        raise Exception(f"Failed to download file: {response.status_code} - {response.text}")
+    return BytesIO(response.content)
+
+
 def extract_text_from_pdf(file_url):
-    """Extract text from PDF file"""
+    """Extract text from PDF file using multiple methods"""
     try:
+        print("📥 Downloading PDF...")
         response = requests.get(file_url, timeout=30)
-        file_data = BytesIO(response.content)
-        pdf_reader = PyPDF2.PdfReader(file_data)
+        file_data = download_twilio_file(file_url)
+
         text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-        return text
+
+        # Method 1: Try pdfplumber first (better for complex PDFs)
+        try:
+            print("🔧 Trying pdfplumber...")
+            with pdfplumber.open(file_data) as pdf:
+                for page_num, page in enumerate(pdf.pages, 1):
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+                        print(f"   ✓ Page {page_num}: {len(page_text)} chars")
+
+            if len(text.strip()) > 50:
+                print(f"✅ pdfplumber success! Extracted {len(text)} characters")
+                return text
+            else:
+                print("⚠️ pdfplumber extracted too little text, trying alternative...")
+
+        except Exception as e:
+            print(f"⚠️ pdfplumber failed: {str(e)}, trying pypdf...")
+
+        # Method 2: Fallback to pypdf
+        try:
+            file_data.seek(0)  # Reset file pointer
+            print("🔧 Trying pypdf...")
+            pdf_reader = PdfReader(file_data)
+
+            for page_num, page in enumerate(pdf_reader.pages, 1):
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+                    print(f"   ✓ Page {page_num}: {len(page_text)} chars")
+
+            if len(text.strip()) > 50:
+                print(f"✅ pypdf success! Extracted {len(text)} characters")
+                return text
+            else:
+                return "ERROR: PDF appears to be empty or scanned image. Please send a text-based PDF."
+
+        except Exception as e:
+            print(f"❌ pypdf failed: {str(e)}")
+            return f"ERROR: Could not read PDF - {str(e)}"
+
     except Exception as e:
-        return f"Error reading PDF: {str(e)}"
+        print(f"❌ Download failed: {str(e)}")
+        return f"ERROR: Could not download PDF - {str(e)}"
 
 
 def extract_text_from_docx(file_url):
@@ -186,12 +243,29 @@ def whatsapp_webhook():
             file_type = media_type
 
             print(f"📎 Processing file: {media_type}")
+            print(f"📎 File URL: {media_url}")
+
             msg.body("✅ Resume received! Processing your document...")
 
             resume_text = extract_text_from_file(media_url, media_type)
 
-            if "Error" in resume_text or len(resume_text) < 50:
-                msg.body(f"\n\n❌ Could not extract text from file. Please send as PDF, DOCX, or plain text.")
+            # Check for errors
+            if resume_text.startswith("ERROR:"):
+                error_msg = resume_text.replace("ERROR: ", "")
+                msg.body(f"\n\n❌ {error_msg}")
+
+                # Add helpful tip
+                if "scanned image" in error_msg.lower():
+                    msg.body(
+                        "\n\n💡 Tip: Your PDF is a scanned image. Please:\n• Use a text-based PDF\n• Or copy-paste your resume as text")
+                else:
+                    msg.body("\n\n💡 Try sending your resume as:\n• Plain text message\n• DOCX file\n• Different PDF")
+
+                return str(resp)
+
+            if len(resume_text) < 50:
+                msg.body(
+                    f"\n\n❌ Could not extract enough text from file (only {len(resume_text)} characters).\n\n💡 Please send as:\n• PDF with actual text (not scanned)\n• DOCX file\n• Plain text")
                 return str(resp)
 
         else:
@@ -199,12 +273,14 @@ def whatsapp_webhook():
             resume_text = incoming_msg
 
             if len(resume_text) < 50:
-                msg.body("👋 Hi! Please send your resume as:\n• PDF/DOCX file\n• Or paste your resume text")
+                msg.body(
+                    "👋 Hi! Please send your resume as:\n• PDF/DOCX file\n• Or paste your resume text (minimum 50 characters)")
                 return str(resp)
 
             msg.body("✅ Text received! Extracting your details...")
 
         print(f"📄 Extracted text length: {len(resume_text)} characters")
+        print(f"📄 First 200 chars: {resume_text[:200]}...")
 
         # Parse resume using Gemini
         print("🤖 Sending to Gemini for parsing...")
@@ -212,7 +288,14 @@ def whatsapp_webhook():
 
         print(f"✨ Parsed data: {parsed_data}")
 
+        # Check if parsing was successful
+        if parsed_data.get('name') in ['Parsing error', 'Error', 'Not found']:
+            msg.body(
+                "\n\n⚠️ Could not extract all details. Please make sure your resume includes:\n• Your full name\n• Email address\n• Phone number\n• Work experience\n• Skills")
+            return str(resp)
+
         # Store in Google Sheets
+        from datetime import datetime
         row_data = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             parsed_data.get('name', 'Not found'),
@@ -246,6 +329,9 @@ Your application has been recorded. Our team will review and contact you soon!
     except Exception as e:
         error_msg = f"❌ Error processing resume: {str(e)}"
         print(error_msg)
+        print(f"Full error details: {repr(e)}")
+        import traceback
+        traceback.print_exc()
         msg.body(error_msg)
 
     return str(resp)
