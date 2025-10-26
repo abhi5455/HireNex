@@ -67,5 +67,12 @@ TWILIO_AUTH_TOKEN
 DEV_EMAIL
 ```
 
+## ⚡Demo
+<img width="1377" height="963" alt="Screenshot 2025-10-26 131924" src="https://github.com/user-attachments/assets/75d00f7e-36d6-4e4a-b7c7-7dedd4d828a0" />
+<br><br>
+<img width="1513" height="387" alt="Screenshot 2025-10-26 132150" src="https://github.com/user-attachments/assets/7394df14-63b1-4d3f-8ec0-144367fd663e" />
+
+
+
 
 
