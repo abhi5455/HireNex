@@ -1,6 +1,10 @@
 # HireNex: WhatsApp Resume Parser
 
-An automated resume processing system that receives resumes via **WhatsApp**, extracts key candidate information using **AI**, and stores structured data in **Google Sheets** - all in real time.
+Recruiters often struggle with manually sorting through hundreds of resumes, identifying candidate details like names, emails, phone numbers, and experience levels. This process is time-consuming, error-prone, and inefficient — especially when applications come from multiple sources.
+
+HireNex eliminates that hassle by automating the entire process.
+When a candidate sends their resume through WhatsApp, the system automatically downloads, processes, and logs their details into a Google Sheet.
+A confirmation message is instantly sent back to the candidate summarizing the extracted information.
 
 ---
 
@@ -61,3 +65,7 @@ GOOGLE_SHEET_NAME
 TWILIO_ACCOUNT_SID
 TWILIO_AUTH_TOKEN
 DEV_EMAIL
+```
+
+
+
